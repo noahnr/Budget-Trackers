@@ -1,9 +1,11 @@
 const FILES_TO_CACHE = [
     "/",
-    "/styles.css",
     "/index.html",
+    "/styles.css",
     "/index.js",
-
+    "/manifest.webmanifest",
+    "/icons/icon-192x192.png",
+    "/icons/icon-512x512.png",
 ];
 
 const CACHE_NAME = "static-cache-v2";
@@ -21,7 +23,7 @@ self.addEventListener("install", function (evt) {
     self.skipWaiting();
 });
 
-// The activate handler takes care of cleaning up old caches.
+// activate
 self.addEventListener("activate", function (evt) {
     evt.waitUntil(
         caches.keys().then((keyList) => {
@@ -39,25 +41,28 @@ self.addEventListener("activate", function (evt) {
     self.clients.claim();
 });
 
+// fetch
 self.addEventListener("fetch", function (evt) {
-    // cache successful requests to the API
-    if (evt.request.url.includes("/api/transaction")) {
-        console.log("[service worker] Fetch (data)", evt.request.url);
+    if (evt.request.url.includes("/api/")) {
         evt.respondWith(
-            caches.open(DATA_CACHE_NAME).then((cache) => {
-                return fetch(evt.request)
-                    .then((response) => {
-                        // If the response was good, clone it and store it in the cache.
-                        if (response.status === 200) {
-                            cache.put(evt.request.url, response.clone());
-                        }
-                        return response;
-                    })
-                    .catch((err) => {
-                        console.log(err);
-                        return cache.match(evt.request);
-                    });
-            })
+            caches
+                .open(DATA_CACHE_NAME)
+                .then((cache) => {
+                    return fetch(evt.request)
+                        .then((response) => {
+                            // If the response was good, clone it and store it in the cache.
+                            if (response.status === 200) {
+                                cache.put(evt.request.url, response.clone());
+                            }
+
+                            return response;
+                        })
+                        .catch((err) => {
+                            // Network request failed, try to get it from the cache.
+                            return cache.match(evt.request);
+                        });
+                })
+                .catch((err) => console.log(err))
         );
 
         return;
